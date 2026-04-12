@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Status Meja Restaurant</title>
+  <style>
+    body { font-family: Arial; }
+    .meja { padding: 10px; margin: 5px; display: inline-block; border-radius: 50px; }
+    .kosong { background: #dc0aae; color: white; }
+    .booked { background: #4636f4; color: white; }
+  </style>
+</head>
+<body>
+
+<h2>Status Meja Restaurant</h2>
+<div id="data"></div>
+
+<script>
+const url = "https://opensheet.elk.sh/1XDEffvA6F04jJ_v48SRu1cvOct2202T45v2M-K1nUsM/Sheet1";
+
+fetch(url)
+  .then(res => res.json())
+  .then(data => {
+    let html = "";
+    data.forEach(item => {
+      let statusClass = item.Status === "Booked" ? "booked" : "kosong" ;
+      html += `<div class="meja ${statusClass}">
+        Meja ${item.Meja}<br>
+        ${item.Tanggal}<br>
+        ${item.Status}
+      </div>`;
+    });
+    document.getElementById("data").innerHTML = html;
+  });
+</script>
+
+</body>
+</html>
