@@ -1,36 +1,220 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-  <title>Status Meja Restaurant</title>
-  <style>
-    body { font-family: Arial; }
-    .meja { padding: 10px; margin: 5px; display: inline-block; border-radius: 50px; }
-    .kosong { background: #dc0aae; color: white; }
-    .booked { background: #4636f4; color: white; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Booking Status - Customer View</title>
+    <style>
+        :root {
+            --primary-blue: #1a3a5f;
+            --gold: #d4af37;
+            --booked-color: #2c4e7a;
+            --available-color: #e0e0e0;
+            --bg-color: #f4f7f6;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg-color);
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 350px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: var(--primary-blue);
+            color: white;
+            text-align: center;
+            padding: 15px;
+            font-weight: bold;
+        }
+
+        .loading-text {
+            text-align: center;
+            font-size: 0.8rem;
+            padding: 10px;
+            color: var(--primary-blue);
+        }
+
+        .section { padding: 20px; }
+
+        h3 {
+            text-align: center;
+            font-size: 0.8rem;
+            margin-bottom: 15px;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+
+        .seat {
+            aspect-ratio: 1/1;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+            cursor: default;
+            user-select: none;
+            transition: all 0.3s ease;
+        }
+
+        .seat.available {
+            background-color: var(--available-color);
+            color: #777;
+        }
+
+        .seat.booked {
+            background-color: var(--booked-color);
+            color: white;
+        }
+
+        .status-text {
+            font-size: 0.5rem;
+            font-weight: normal;
+        }
+
+        /* VIP Area */
+        .vip-container {
+            background: #0d1f33;
+            border: 2px solid var(--gold);
+            border-radius: 15px;
+            padding: 20px 15px 15px 15px;
+            position: relative;
+        }
+
+        .vip-badge {
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--gold);
+            color: #000;
+            font-size: 0.6rem;
+            padding: 2px 12px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        .vip-title {
+            color: var(--gold);
+            text-align: center;
+            font-size: 0.75rem;
+            margin-bottom: 15px;
+        }
+
+        .seat.vip.booked {
+            box-shadow: 0 0 8px var(--gold);
+            border: 1px solid var(--gold);
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            font-size: 0.7rem;
+            padding: 15px;
+            border-top: 1px solid #eee;
+        }
+
+        .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+    </style>
 </head>
 <body>
 
-<h2>Status Meja Restaurant</h2>
-<div id="data"></div>
+<div class="container">
+    <div class="header">STATUS BOOKING REAL-TIME</div>
+    <div id="loading" class="loading-text">Menghubungkan ke database...</div>
+    
+    <div class="section">
+        <h3>Reguler (1-13)</h3>
+        <div id="regular-grid" class="grid"></div>
+
+        <div class="vip-container">
+            <div class="vip-badge">PREMIUM</div>
+            <div class="vip-title">VIP AREA (14-17)</div>
+            <div id="vip-grid" class="grid"></div>
+        </div>
+    </div>
+
+    <div class="legend">
+        <span><span class="dot" style="background: var(--booked-color);"></span> Terisi</span>
+        <span><span class="dot" style="background: var(--available-color);"></span> Tersedia</span>
+    </div>
+</div>
 
 <script>
-const url = "https://opensheet.elk.sh/1XDEffvA6F04jJ_v48SRu1cvOct2202T45v2M-K1nUsM/Sheet1";
+    const url = "https://opensheet.elk.sh/1XDEffvA6F04jJ_v48SRu1cvOct2202T45v2M-K1nUsM/Sheet1";
 
-fetch(url)
-  .then(res => res.json())
-  .then(data => {
-    let html = "";
-    data.forEach(item => {
-      let statusClass = item.Status === "Booked" ? "booked" : "kosong" ;
-      html += `<div class="meja ${statusClass}">
-        Meja ${item.Meja}<br>
-        ${item.Tanggal}<br>
-        ${item.Status}
-      </div>`;
-    });
-    document.getElementById("data").innerHTML = html;
-  });
+    async function loadBookingStatus() {
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            document.getElementById('loading').style.display = 'none';
+            renderSeats(data);
+        } catch (error) {
+            console.error("Gagal mengambil data:", error);
+        }
+    }
+
+    function renderSeats(data) {
+        const regularGrid = document.getElementById('regular-grid');
+        const vipGrid = document.getElementById('vip-grid');
+        
+        regularGrid.innerHTML = '';
+        vipGrid.innerHTML = '';
+
+        data.forEach(item => {
+            const nomor = item.nomor;
+            const status = item.status.toLowerCase();
+            const tanggal = item.tanggal || "-"; // Ambil kolom tanggal
+            const jam = item.jam || "-";         // Ambil kolom jam
+            const isVip = parseInt(nomor) >= 14;
+
+            const seatEl = document.createElement('div');
+            // Tambahkan class 'clickable' jika booked agar kursor berubah saat diarahkan
+            seatEl.className = `seat ${status} ${isVip ? 'vip' : ''}`;
+            
+            // Logika Klik Alert
+            if (status === 'booked') {
+                seatEl.style.cursor = 'pointer'; // Menandakan bisa diklik
+                seatEl.onclick = () => {
+                    alert(`🍲 MEJA ${nomor}\nStatus: TERISI (BOOKED)\n📆 Tanggal: ${tanggal}\n⏰ Jam: ${jam}\n\nData dari Google Sheet terhubung secara langsung.`);
+                };
+            }
+
+            seatEl.innerHTML = `
+                ${nomor}
+                <span class="status-text">${status === 'booked' ? 'Booked' : ''}</span>
+            `;
+
+            if (isVip) {
+                vipGrid.appendChild(seatEl);
+            } else {
+                regularGrid.appendChild(seatEl);
+            }
+        });
+    }
+
+    loadBookingStatus();
+    // Refresh setiap 1 detik
+    setInterval(loadBookingStatus, 1000);
 </script>
 
 </body>
